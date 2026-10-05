@@ -154,9 +154,14 @@ class SandboxProcessRunner(
             .filter { it.isNotBlank() }
             .joinToString("") { " --patch $it" }
         add(
+            // ⚠️ 选项顺序关键：`--patch` 必须放在 `--profile <name>` **之前**。
+            // `--profile web` 之后由 web app 的 commander（dsh-web-app/startup.js）
+            // 接管解析，而它只定义 --host/--port/--no-open/--trusted-host 且
+            // **没有 allowUnknownOption**——`--patch` 出现在后面会被拒：
+            // "error: unknown option '--patch'"（实机复现于 DSH 0.2.0-rc.2）。
             "exec /usr/local/bin/node --expose-internals$shim " +
                 "/opt/dshapp/runtime/node_modules/@deepseek-ai/dsh/lib/bin.js " +
-                "--profile ${Constants.DSH_WEB_PROFILE} --port $dshPort$patches",
+                "$patches --profile ${Constants.DSH_WEB_PROFILE} --port $dshPort",
         )
     }
 
