@@ -1455,6 +1455,132 @@ window.__ModuleLoader__.load({
         }, true);
       })(); } catch (e) { bootLog('open-doc-fail:' + (e && e.message || e)); }
 
+      // =====================================================================
+      // 14) 工作区快捷三选一（沙盒文件 / 工作区 / 本地工作区）
+      // =====================================================================
+      // directory-picker-browse 的「选择工作区目录」对话框（h2 标题：
+      // "选择工作区目录" / "Select Workspace Directory"）支持"编辑路径"输入
+      // 任意目录后"打开"。这里在对话框头部注入三个快捷按钮，点击后走
+      // 「激活编辑路径 → React 兼容填值 → 触发打开」——等同于用户浏览到
+      // 该目录并选择，browse 自行回调 onPicked(path) 创建/切换工作区。
+      // ⚠️ 纯 DOM 增强：不注册 slot、不影响任何插件激活；探测不到对话框
+      //（结构变化/未打开）时什么都不做，绝不阻断原功能。
+      try {
+        (function installWorkspaceQuickPick() {
+          if (!window.MutationObserver) { return; }
+          var WS_QUICK = [
+            { key: 'sandbox', zh: '沙盒文件', en: 'Sandbox', path: '/' },
+            { key: 'work', zh: '工作区', en: 'Workspace', path: '/root/projects' },
+            { key: 'local', zh: '本地工作区', en: 'Local workspace', path: '/mnt/local' },
+          ];
+          var TITLE_TEXTS = ['选择工作区目录', 'Select Workspace Directory'];
+          var injectedDialogs = new WeakSet();
+
+          function docLangZh() {
+            var lang = (document.documentElement && document.documentElement.lang) || '';
+            return lang.indexOf('zh') === 0;
+          }
+          function findDialog() {
+            var hs = document.querySelectorAll('h2');
+            for (var i = 0; i < hs.length; i++) {
+              var txt = (hs[i].textContent || '').replace(/\s+/g, ' ').trim();
+              for (var j = 0; j < TITLE_TEXTS.length; j++) {
+                if (txt === TITLE_TEXTS[j] || txt.indexOf(TITLE_TEXTS[j]) >= 0) {
+                  var container = hs[i].closest('[role="dialog"]');
+                  return container || hs[i].parentElement;
+                }
+              }
+            }
+            return null;
+          }
+          function injectBar(dlg) {
+            if (injectedDialogs.has(dlg)) return;
+            injectedDialogs.add(dlg);
+            var bar = document.createElement('div');
+            bar.setAttribute('data-dshbox-ws-bar', '1');
+            bar.style.cssText = 'display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid rgba(127,127,127,.25);flex-wrap:wrap;';
+            var zh = docLangZh();
+            for (var i = 0; i < WS_QUICK.length; i++) {
+              (function (opt) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = zh ? opt.zh : opt.en;
+                b.setAttribute('data-dshbox-ws', opt.key);
+                b.style.cssText = 'border:1px solid rgba(16,163,127,.5);background:rgba(16,163,127,.10);color:inherit;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;';
+                b.addEventListener('click', function () { pickPath(opt.path, dlg); });
+                bar.appendChild(b);
+              })(WS_QUICK[i]);
+            }
+            dlg.insertBefore(bar, dlg.firstChild);
+            bootLog('ws-quick: bar injected');
+          }
+          function scanDialogs() {
+            var dlg = findDialog();
+            if (dlg) injectBar(dlg);
+          }
+          function findEditButton(dlg) {
+            var els = dlg.querySelectorAll('button[aria-label], button[title]');
+            for (var i = 0; i < els.length; i++) {
+              var al = ((els[i].getAttribute('aria-label') || '') + (els[i].getAttribute('title') || ''));
+              if (al.indexOf('编辑路径') >= 0 || al.indexOf('Edit path') >= 0) return els[i];
+            }
+            return null;
+          }
+          function findPathInput(dlg) {
+            var inputs = dlg.querySelectorAll('input');
+            for (var i = 0; i < inputs.length; i++) {
+              var al = ((inputs[i].getAttribute('aria-label') || '') + (inputs[i].getAttribute('title') || ''));
+              if (al.indexOf('编辑路径') >= 0 || al.indexOf('Edit path') >= 0) return inputs[i];
+            }
+            return null;
+          }
+          function findOpenButton(dlg) {
+            var btns = dlg.querySelectorAll('button');
+            for (var i = 0; i < btns.length; i++) {
+              var t = (btns[i].textContent || '').replace(/\s+/g, ' ').trim();
+              if (t === '打开' || t === 'Open') return btns[i];
+            }
+            return null;
+          }
+          function pickPath(path, dlg) {
+            bootLog('ws-quick: pick ' + path);
+            var filled = false;
+            var editBtn = findEditButton(dlg);
+            if (editBtn) { try { editBtn.click(); } catch (e) { bootLog('ws-quick: edit-click-fail'); } }
+            var tries = 0;
+            var timer = setInterval(function () {
+              tries++;
+              var input = findPathInput(dlg);
+              if (input && !filled) {
+                try {
+                  var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                  setter.call(input, path);
+                  input.dispatchEvent(new Event('input', { bubbles: true }));
+                  input.dispatchEvent(new Event('change', { bubbles: true }));
+                } catch (e) { input.value = path; }
+                filled = true;
+                bootLog('ws-quick: value set');
+              }
+              var openBtn = findOpenButton(dlg);
+              if (filled && openBtn && !openBtn.disabled) {
+                clearInterval(timer);
+                try { openBtn.click(); bootLog('ws-quick: opened ' + path); } catch (e) { bootLog('ws-quick: open-click-fail'); }
+                return;
+              }
+              if (tries > 50) clearInterval(timer);
+            }, 150);
+          }
+
+          var obs = new MutationObserver(function () {
+            try { scanDialogs(); } catch (e) { /* noop */ }
+          });
+          if (document.documentElement) {
+            obs.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+          }
+          try { scanDialogs(); } catch (e) { /* noop */ }
+        })();
+      } catch (e) { bootLog('ws-quick-fail:' + (e && e.message || e)); }
+
     };
 
     return module.exports;
