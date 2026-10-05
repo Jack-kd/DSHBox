@@ -207,6 +207,7 @@ fun HomeScreen(
             dshReady = dshReady,
             dshError = dshError,
             dshUnresponsive = dshUnresponsive,
+            dshBaseUrl = dshBaseUrl,
             sandboxRunning = sandboxRunning,
             onStart = {
                 if (sandboxRunning) {
@@ -495,6 +496,7 @@ private fun DshStatusCard(
     dshReady: Boolean,
     dshError: Boolean,
     dshUnresponsive: Boolean,
+    dshBaseUrl: String,
     sandboxRunning: Boolean,
     onStart: () -> Unit,
     onStop: () -> Unit,

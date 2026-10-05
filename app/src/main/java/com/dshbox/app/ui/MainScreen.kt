@@ -302,6 +302,7 @@ fun MainScreen() {
                     onOpenPilot = onOpenPilot,
                     onOpenPluginManager = onOpenPluginManager,
                     dshLaunchToken = dshLaunchToken,
+                    dshBaseUrl = dshBaseUrl,
                     pendingOnlineImport = pendingOnlineImport,
                     onPendingOnlineImportConsumed = { pendingOnlineImport = false },
                 )
@@ -385,6 +386,8 @@ private fun TabContent(
     onOpenPluginManager: () -> Unit,
     /** DSH 启动 token（首页「浏览器」入口拼进 URL 用；未就绪时为 null）。 */
     dshLaunchToken: String?,
+    /** DSH Web 服务实际地址（自动换端口后更新）。 */
+    dshBaseUrl: String,
     pendingOnlineImport: Boolean,
     onPendingOnlineImportConsumed: () -> Unit,
 ) {
