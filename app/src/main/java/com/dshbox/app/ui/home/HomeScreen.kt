@@ -70,6 +70,8 @@ fun HomeScreen(
     dshError: Boolean,
     /** 连续不应答已达展示阈值：状态行改提示「无响应」，供用户在等待期间自行选择重启。 */
     dshUnresponsive: Boolean,
+    /** DSH Web 服务实际地址（端口被占用自动换端口后更新）。 */
+    dshBaseUrl: String,
     runtimeInstalled: Boolean,
     nodeLayerInstalled: Boolean = true,
     bundledRuntimeAvailable: Boolean,
@@ -599,7 +601,7 @@ private fun DshStatusCard(
                 // 折行把卡片顶高（本卡刚按"更紧凑"调过）。
                 Column(modifier = Modifier.padding(start = 20.dp)) {
                     Text(
-                        text = Constants.DSH_BASE_URL,
+                        text = dshBaseUrl,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),

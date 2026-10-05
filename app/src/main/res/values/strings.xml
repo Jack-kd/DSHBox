@@ -296,6 +296,10 @@
     <string name="files_risk_title">Risk warning</string>
     <string name="files_root_sandbox">Sandbox</string>
     <string name="files_root_workspace">Workspace</string>
+    <string name="files_root_local">Local workspace</string>
+    <string name="local_perm_title">Local file access required</string>
+    <string name="local_perm_msg">The local workspace needs the "All files access" permission. Grant it in Settings to browse the phone storage.</string>
+    <string name="local_perm_action">Grant</string>
     <string name="files_save_done">Saved</string>
     <string name="files_save_failed">Save failed: %1$s</string>
     <string name="files_save_failed_generic">Save failed</string>
@@ -455,6 +459,9 @@
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_section_dsh">DSH</string>
     <string name="settings_section_permissions">Permissions</string>
+    <string name="settings_local_access">Local file access</string>
+    <string name="settings_local_access_granted">Granted</string>
+    <string name="settings_local_access_denied">Not granted</string>
     <string name="settings_section_sandbox">Sandbox</string>
     <string name="settings_section_feedback">Feedback</string>
     <string name="settings_feedback_star">Star us on GitHub</string>

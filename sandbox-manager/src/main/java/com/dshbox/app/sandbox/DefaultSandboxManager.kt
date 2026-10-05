@@ -20,6 +20,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
+import android.os.Build
+import android.os.Environment
 import android.util.Log
 import java.util.zip.ZipFile
 
@@ -38,7 +40,7 @@ import java.util.zip.ZipFile
  */
 class DefaultSandboxManager(
     private val config: SandboxConfig,
-    private val healthChecker: SandboxHealthChecker = HttpHealthChecker(config.dshHost, config.dshPort),
+    private val healthChecker: SandboxHealthChecker = HttpHealthChecker(config.dshHost, portProvider = { dshPort }),
     /**
      * 设备是否处于交互状态（唤醒且亮屏）。健康循环据此区分探测失败的性质：设备休眠
      * 时 guest 会被整体冻结，此时的失败是暂时状态，不该判为故障。
@@ -72,9 +74,50 @@ class DefaultSandboxManager(
     private val _dshLaunchToken = MutableStateFlow<String?>(null)
     override val dshLaunchToken: StateFlow<String?> = _dshLaunchToken.asStateFlow()
 
+    /**
+     * 当前 DSH Web 服务端口。默认 [Constants.DSH_DEFAULT_PORT]，启动时若被占用
+     * （外部进程或残留）自动顺延找下一个空闲端口；停止 DSH 后复位回默认值。
+     */
+    @Volatile
+    private var dshPort: Int = Constants.DSH_DEFAULT_PORT
+
+    /** 当前 DSH Web 服务地址（跟随 [dshPort]）。UI/通知/诊断以此为准，勿用静态常量。 */
+    private val _dshBaseUrl = MutableStateFlow(Constants.DSH_BASE_URL)
+    override val dshBaseUrl: StateFlow<String> = _dshBaseUrl.asStateFlow()
+
     private val dshLayer = DshLayer(runtimeCurrentDir(), bundleManager)
 
     private val lifecycleMutex = Mutex()
+
+    /**
+     * 找一个空闲端口：从 [startPort] 起逐个探测（connect 失败=空闲）。
+     * 默认端口被外部进程占用时 DSH 启动会 EADDRINUSE，这里自动换端口。
+     */
+    private fun findFreePort(startPort: Int = Constants.DSH_DEFAULT_PORT, maxAttempts: Int = 20): Int {
+        for (port in startPort until startPort + maxAttempts) {
+            try {
+                java.net.Socket().use { socket ->
+                    socket.connect(java.net.InetSocketAddress(config.dshHost, port), 500)
+                }
+                // connect 成功 = 端口被占用，继续探测下一个
+            } catch (_: Exception) {
+                return port
+            }
+        }
+        return startPort
+    }
+
+    /**
+     * 本地工作区宿主目录：Android 11+ 已授予「所有文件访问」权限时返回
+     * /storage/emulated/0（挂载到 guest /mnt/local），否则不挂载。
+     */
+    private fun localWorkspaceHostDir(): String? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+            Environment.getExternalStorageDirectory().absolutePath
+        } else {
+            null
+        }
+
     @Volatile
     private var dshHealthLoopJob: Job? = null
     @Volatile
@@ -114,6 +157,7 @@ class DefaultSandboxManager(
                 workspaceBind = config.userDataDir.absolutePath,
                 nodeDir = nodeLayerDir().takeIf { it.isDirectory }?.absolutePath,
                 dshDir = dshLayerDir().takeIf { it.isDirectory }?.absolutePath,
+                localWorkspaceHostDir = localWorkspaceHostDir(),
             )
             val prootEnv = buildProotEnv(runtimeDir, "sandbox")
             Log.i(TAG, "starting sandbox proot")
@@ -216,6 +260,10 @@ class DefaultSandboxManager(
                     // dsh（句柄随进程回收一并丢失）。先按 cmdline 兜底清扫，否则新实例会因
                     // 端口被占（EADDRINUSE）启动失败——与停机、就地重启两处相同的兜底。
                     runCatching { processRunner.killAll(Constants.DSH_START_SCRIPT) }
+                    // 端口自动分配：默认 3080 若仍被外部进程占用，顺延找空闲端口
+                    // （EADDRINUSE 保护），并同步广播给健康检查 / WebView / 通知。
+                    dshPort = findFreePort()
+                    _dshBaseUrl.value = "http://${config.dshHost}:$dshPort"
                     // Start 前清掉"持有者已不存在"的写者锁：dsh 的原子写只等 2 秒且
                     // 不会清理别人留下的锁，一次强杀就能让之后的启动全部失败。
                     sweepDeadWriterLocks()
@@ -229,6 +277,7 @@ class DefaultSandboxManager(
                         shimHostDir = linkShimHostDir(),
                         dshPatchGuestPaths = dshOverlayGuestPaths(),
                         pilotHostDir = pilotHostDir(),
+                        localWorkspaceHostDir = localWorkspaceHostDir(),
                     )
                     val prootEnv = buildProotEnv(runtimeDir, "dsh")
                     Log.i(TAG, "starting dsh proot")
@@ -261,7 +310,7 @@ class DefaultSandboxManager(
                         DshRuntimeStatus(
                             dshVersion = null,
                             pluginApiVersion = null,
-                            baseUrl = "http://${config.dshHost}:${config.dshPort}",
+                            baseUrl = _dshBaseUrl.value,
                             ready = true,
                         ),
                     )
@@ -302,6 +351,9 @@ class DefaultSandboxManager(
         dshProcess = null
         _dshState.value = DshState.STOPPED
         _dshUnresponsive.value = false
+        // DSH 已停，端口复位默认值，下次启动重新探测分配。
+        dshPort = Constants.DSH_DEFAULT_PORT
+        _dshBaseUrl.value = Constants.DSH_BASE_URL
         Log.i(TAG, "stopDsh(): dsh=STOPPED")
     }
 
@@ -1168,7 +1220,7 @@ class DefaultSandboxManager(
         // serves the app's WebView / health endpoint (default port 3080).
         if (role == "dsh") {
             base["DSH_HOME"] = "/root/projects/.dsh"
-            base["PORT"] = Constants.DSH_DEFAULT_PORT.toString()
+            base["PORT"] = dshPort.toString()
             // The node guest inherits TMPDIR from the Android app process (the
             // app cache dir), which does not exist inside this PRoot rootfs; the
             // DSH app's dsh-spill-local does mkdtemp(TMPDIR) on boot and aborts
@@ -1317,6 +1369,9 @@ class DefaultSandboxManager(
         _dshState.value = DshState.STARTING
         try {
             ensureRuntimePresent()
+            // 就地重启同样重新分配端口（旧进程可能未完全释放 / 外部占用）。
+            dshPort = findFreePort()
+            _dshBaseUrl.value = "http://${config.dshHost}:$dshPort"
             val runtimeDir = runtimeCurrentDir()
             val command = processRunner.buildProotDshCommand(
                 prootBinary = prootBinary().absolutePath,
@@ -1327,6 +1382,7 @@ class DefaultSandboxManager(
                 shimHostDir = linkShimHostDir(),
                 dshPatchGuestPaths = dshOverlayGuestPaths(),
                 pilotHostDir = pilotHostDir(),
+                localWorkspaceHostDir = localWorkspaceHostDir(),
             )
             val prootEnv = buildProotEnv(runtimeDir, "dsh")
             dshProcess = processRunner.start(command, tag = "dsh", env = prootEnv, onRawLine = ::ingestDshWebLaunchToken)

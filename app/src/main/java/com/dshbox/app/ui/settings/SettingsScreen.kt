@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import com.dshbox.app.BuildConfig
+import com.dshbox.app.ui.files.hasLocalWorkspaceAccess
 import com.dshbox.app.DshApp
 import com.dshbox.app.R
 import com.dshbox.app.util.AppUpdater
@@ -102,6 +103,8 @@ fun SettingsScreen(
     val sandboxManager = (context.applicationContext as DshApp).container.sandboxManager
     var showDiagnostics by remember { mutableStateOf(false) }
     var showBatteryDialog by remember { mutableStateOf(false) }
+    // 本地文件访问（所有文件访问权限）状态；每次进设置页刷新。
+    var localAccessGranted by remember { mutableStateOf(context.hasLocalWorkspaceAccess()) }
     // 在线导入运行环境包（base/node 退出 APK 的主链路）：0=隐藏 1=入口页 2=Linux层 3=node层。
     var onlineImportPage by remember { mutableStateOf(0) }
     // 首页直达：pending 置位时打开入口页并复位标记。
@@ -182,6 +185,10 @@ fun SettingsScreen(
     }
 
     // 进设置页自动重算；策略变化（沙箱/DSH 启停）也重算；切走页取消进行中的扫描。
+    LaunchedEffect(isActive) {
+        if (isActive) localAccessGranted = context.hasLocalWorkspaceAccess()
+    }
+
     LaunchedEffect(isActive, tmpGuardActive) {
         if (isActive) rescanStorage() else scanJob?.cancel()
     }
@@ -222,6 +229,7 @@ fun SettingsScreen(
     }
 
     val dshVersion by sandboxManager.dshVersion.collectAsState()
+    val dshBaseUrl by sandboxManager.dshBaseUrl.collectAsState()
     val dshUpdateProgress by sandboxManager.dshUpdateProgress.collectAsState()
 
     val importDshLauncher = rememberLauncherForActivityResult(
@@ -304,6 +312,7 @@ fun SettingsScreen(
     if (showDiagnostics) {
         DiagnosticsScreen(
             sandboxReady = sandboxRunning,
+            dshBaseUrl = dshBaseUrl,
             onBack = { showDiagnostics = false },
             modifier = modifier,
         )
@@ -393,7 +402,7 @@ fun SettingsScreen(
                 title = stringResource(
                     if (dshReady) R.string.home_dsh_ready else R.string.home_dsh_stopped,
                 ),
-                value = Constants.DSH_BASE_URL,
+                value = dshBaseUrl,
             )
             SettingsDivider()
             SettingsRow(
@@ -474,6 +483,30 @@ fun SettingsScreen(
         }
 
         SettingsSection(title = stringResource(R.string.settings_section_permissions)) {
+            SettingsRow(
+                title = stringResource(R.string.settings_local_access),
+                value = stringResource(
+                    if (localAccessGranted) R.string.settings_local_access_granted
+                    else R.string.settings_local_access_denied,
+                ),
+                onClick = {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                        val intent = android.content.Intent(
+                            android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                            android.net.Uri.parse("package:${context.packageName}"),
+                        )
+                        runCatching { context.startActivity(intent) }
+                    } else {
+                        // Android 10 及以下：跳应用详情页让用户开存储权限
+                        val intent = android.content.Intent(
+                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            android.net.Uri.parse("package:${context.packageName}"),
+                        )
+                        runCatching { context.startActivity(intent) }
+                    }
+                },
+            )
+            SettingsDivider()
             SettingsActionRow(
                 title = stringResource(R.string.settings_battery_whitelist),
                 onClick = { showBatteryDialog = true },

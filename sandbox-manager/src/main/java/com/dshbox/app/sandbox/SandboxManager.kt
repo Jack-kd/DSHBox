@@ -18,6 +18,12 @@ interface SandboxManager {
     val dshState: StateFlow<DshState>
 
     /**
+     * DSH Web 服务的实际地址。默认 3080，被占用时启动自动换端口并在此更新；
+     * 健康检查 / WebView / 通知 / 诊断都应以本值而非静态常量拼接 URL。
+     */
+    val dshBaseUrl: StateFlow<String>
+
+    /**
      * 最近一次健康探测持续失败是否已达展示阈值（[DshHealthPolicy.UNRESPONSIVE_HINT_MS]）。
      *
      * 仅供展示层提示「实例可能无响应」；是否重启仍由健康循环按不应答窗口独立判定，

@@ -1,7 +1,11 @@
 package com.dshbox.app.ui.files
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -181,13 +185,33 @@ fun FilesScreen(modifier: Modifier = Modifier, isActiveTab: Boolean = true) {
     val sandboxState by app.container.sandboxManager.sandboxState.collectAsState()
     val sandboxRunning = sandboxState == SandboxState.RUNNING
 
+    // 本地工作区：直接浏览宿主真实存储根（/storage/emulated/0），需要
+    // MANAGE_EXTERNAL_STORAGE（所有文件访问）权限；未授权时只提示不进入。
+    val localRoot = remember { Environment.getExternalStorageDirectory() }
+    var hasLocalAccess by remember { mutableStateOf(context.hasLocalWorkspaceAccess()) }
+    var showLocalPermDialog by remember { mutableStateOf(false) }
+    // Android 10 及以下：运行时请求 READ/WRITE_EXTERNAL_STORAGE（无系统「所有文件访问」页）。
+    val legacyStorageLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { hasLocalAccess = context.hasLocalWorkspaceAccess() }
+
     var rootMode by remember { mutableIntStateOf(0) }
-    val root = if (rootMode == 0) sandboxRoot else workspaceRoot
+    val root = when (rootMode) {
+        0 -> sandboxRoot
+        1 -> workspaceRoot
+        else -> localRoot
+    }
     val isWorkspaceView = rootMode == 1
-    val rootLabel = if (rootMode == 0) {
-        stringResource(R.string.files_root_sandbox)
-    } else {
-        stringResource(R.string.files_root_workspace) + "  /root/projects"
+    val isLocalView = rootMode == 2
+    val rootLabel = when (rootMode) {
+        0 -> stringResource(R.string.files_root_sandbox)
+        1 -> stringResource(R.string.files_root_workspace) + "  /root/projects"
+        else -> stringResource(R.string.files_root_local)
+    }
+
+    // 权限可能在系统设置里被改：每次回到文件页前台时重新检查。
+    LaunchedEffect(isActiveTab) {
+        if (isActiveTab) hasLocalAccess = context.hasLocalWorkspaceAccess()
     }
 
     var currentDir by remember { mutableStateOf(root) }
@@ -280,7 +304,8 @@ fun FilesScreen(modifier: Modifier = Modifier, isActiveTab: Boolean = true) {
 
     fun refreshEntries() {
         val dir = currentDir
-        val isTop = rootMode == 0 && dir.absolutePath == sandboxRoot.absolutePath
+        val isTop = (rootMode == 0 && dir.absolutePath == sandboxRoot.absolutePath) ||
+            (rootMode == 2 && dir.absolutePath == localRoot.absolutePath)
         scope.launch {
             val all = withContext(Dispatchers.IO) { scanDirectory(dir, mapper, isTop) }
             if (dir.absolutePath != currentDir.absolutePath) return@launch
@@ -397,17 +422,21 @@ fun FilesScreen(modifier: Modifier = Modifier, isActiveTab: Boolean = true) {
      * 若需切换 rootMode 则携带 [pendingNavigateDir]，避免被根重置逻辑覆盖。
      */
     fun navigateToDir(logicalDir: File) {
-        val targetRoot = if (logicalDir.absolutePath.startsWith(workspaceRoot.absolutePath)) {
-            workspaceRoot
-        } else {
-            sandboxRoot
+        val targetRoot = when {
+            logicalDir.absolutePath.startsWith(localRoot.absolutePath) -> localRoot
+            logicalDir.absolutePath.startsWith(workspaceRoot.absolutePath) -> workspaceRoot
+            else -> sandboxRoot
         }
         val wantWorkspace = targetRoot == workspaceRoot
-        if ((wantWorkspace && rootMode == 1) || (!wantWorkspace && rootMode == 0)) {
+        val wantLocal = targetRoot == localRoot
+        val currentMatches = (wantWorkspace && rootMode == 1) ||
+            (wantLocal && rootMode == 2) ||
+            (!wantWorkspace && !wantLocal && rootMode == 0)
+        if (currentMatches) {
             currentDir = logicalDir
         } else {
             pendingNavigateDir = logicalDir
-            rootMode = if (wantWorkspace) 1 else 0
+            rootMode = if (wantLocal) 2 else if (wantWorkspace) 1 else 0
         }
         searchQuery = ""
         searchResults = emptyList()
@@ -1007,6 +1036,44 @@ fun FilesScreen(modifier: Modifier = Modifier, isActiveTab: Boolean = true) {
         }
     }
 
+    // 本地工作区未授权提示：引导到系统「所有文件访问」授权页。
+    if (showLocalPermDialog) {
+        AlertDialog(
+            onDismissRequest = { showLocalPermDialog = false },
+            title = { Text(stringResource(R.string.local_perm_title)) },
+            text = { Text(stringResource(R.string.local_perm_msg)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLocalPermDialog = false
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        // Android 11+：跳系统「所有文件访问」授权页
+                        val intent = Intent(
+                            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                            Uri.parse("package:${context.packageName}"),
+                        )
+                        runCatching { context.startActivity(intent) }
+                    } else {
+                        // Android 10 及以下：运行时权限请求
+                        @Suppress("DEPRECATION")
+                        legacyStorageLauncher.launch(
+                            arrayOf(
+                                android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                                android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                            ),
+                        )
+                    }
+                }) {
+                    Text(stringResource(R.string.local_perm_action))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLocalPermDialog = false }) {
+                    Text(stringResource(R.string.settings_cancel_action))
+                }
+            },
+        )
+    }
+
     // ---------------- UI ----------------
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -1059,8 +1126,16 @@ fun FilesScreen(modifier: Modifier = Modifier, isActiveTab: Boolean = true) {
                         options = listOf(
                             stringResource(R.string.files_root_sandbox),
                             stringResource(R.string.files_root_workspace),
+                            stringResource(R.string.files_root_local),
                         ),
-                        onSelect = { rootMode = it },
+                        onSelect = { mode ->
+                            if (mode == 2 && !hasLocalAccess) {
+                                // 未授予本地文件访问权限：不进入，提示并引导授权。
+                                showLocalPermDialog = true
+                            } else {
+                                rootMode = mode
+                            }
+                        },
                         modifier = Modifier.weight(1f),
                     )
                     Spacer(Modifier.width(8.dp))

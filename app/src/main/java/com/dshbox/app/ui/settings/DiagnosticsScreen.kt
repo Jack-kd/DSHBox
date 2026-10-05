@@ -59,6 +59,8 @@ import org.json.JSONObject
 @Composable
 fun DiagnosticsScreen(
     sandboxReady: Boolean,
+    /** DSH Web 服务实际地址（端口被占用自动换端口后更新）。 */
+    dshBaseUrl: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -119,7 +121,7 @@ fun DiagnosticsScreen(
         )
 
         Text(
-            text = stringResource(R.string.diagnostics_dsh_address) + "：" + Constants.DSH_BASE_URL,
+            text = stringResource(R.string.diagnostics_dsh_address) + "：" + dshBaseUrl,
             style = MaterialTheme.typography.bodyLarge,
         )
 

@@ -1027,7 +1027,9 @@ fun DshWebViewScreen(
     // 加载统一走 `loadIfNeeded`（按 URL 去重）：本 effect 的 keys 里含 dshState，
     // 状态抖动一次就会重跑一次 —— 无条件 loadUrl 会把"状态变化"放大成"页面重新导航"，
     // 用户看到的就是发消息/切页面时页面自己刷新。地址没变就不该重新导航。
-    LaunchedEffect(dshLaunchToken, dshState, webContainer) {
+    // url 也在 keys 里：DSH 换端口（自动换端口重启）后 baseUrl 变化，
+    // 必须按新地址带 token 重新加载，否则 WebView 停在旧端口的死链接上。
+    LaunchedEffect(dshLaunchToken, dshState, webContainer, url) {
         val token = dshLaunchToken
         // token 变化时通知容器重新武装 401 重试（见 DshWebContainer.onLaunchTokenChanged）
         val container = webContainer ?: return@LaunchedEffect

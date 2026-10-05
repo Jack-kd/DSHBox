@@ -134,7 +134,7 @@ class SandboxService : Service() {
         val opened = runCatching {
             startActivity(
                 dshBrowserChooser(
-                    Constants.DSH_BASE_URL,
+                    sandboxManager.dshBaseUrl.value,
                     token,
                     getString(R.string.home_open),
                 ),
@@ -893,7 +893,7 @@ class SandboxService : Service() {
             else -> ctx.getString(R.string.notify_dsh_other)
         }
         val contentTitle = "$sandboxText · $dshText"
-        val contentText = Constants.DSH_BASE_URL
+        val contentText = sandboxManager.dshBaseUrl.value
 
         // 打开动作交给 Service（见 openDshInBrowser）：token 在点击那一刻现取。
         val openPending = PendingIntent.getService(

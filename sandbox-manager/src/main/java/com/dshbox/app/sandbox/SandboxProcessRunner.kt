@@ -79,8 +79,9 @@ class SandboxProcessRunner(
         workspaceBind: String,
         nodeDir: String? = null,
         dshDir: String? = null,
+        localWorkspaceHostDir: String? = null,
     ): List<String> = buildList {
-        addAll(layeredProotPrefix(prootBinary, rootfsDir, workspaceBind, nodeDir, dshDir))
+        addAll(layeredProotPrefix(prootBinary, rootfsDir, workspaceBind, nodeDir, dshDir, localWorkspaceHostDir = localWorkspaceHostDir))
         add("--cwd=/root")
         add("--kill-on-exit")
         add("/system/bin/sh"); add("-c")
@@ -114,10 +115,13 @@ class SandboxProcessRunner(
         dshPatchGuestPaths: List<String> = emptyList(),
         /** 手机助手暴露给 guest 的宿主子树，见 [SandboxConfig.pilotEntryDir]。空则不绑。 */
         pilotHostDir: String? = null,
+        /** 本地工作区宿主目录（/storage/emulated/0），绑定到 guest /mnt/local。空则不绑。 */
+        localWorkspaceHostDir: String? = null,
     ): List<String> = buildList {
         addAll(
             layeredProotPrefix(
                 prootBinary, rootfsDir, workspaceBind, nodeDir, dshDir, shimHostDir, pilotHostDir,
+                localWorkspaceHostDir,
             ),
         )
         add("--cwd=/root/projects")
@@ -172,6 +176,7 @@ class SandboxProcessRunner(
         dshDir: String?,
         shimHostDir: String? = null,
         pilotHostDir: String? = null,
+        localWorkspaceHostDir: String? = null,
     ): List<String> = buildList {
         add(prootBinary)
         add("--rootfs=$rootfsDir")
@@ -183,6 +188,9 @@ class SandboxProcessRunner(
         if (!dshDir.isNullOrBlank()) add("--bind=$dshDir:/opt/dshapp/runtime")
         if (!shimHostDir.isNullOrBlank()) add("--bind=$shimHostDir:${Constants.DSH_LINK_SHIM_GUEST_DIR}")
         if (!pilotHostDir.isNullOrBlank()) add("--bind=$pilotHostDir:/opt/pilot")
+        // 本地工作区（宿主 /storage/emulated/0）挂载到 guest /mnt/local：
+        // 授权后沙箱内的 DSH / 终端可直接读写手机本地目录。
+        if (!localWorkspaceHostDir.isNullOrBlank()) add("--bind=$localWorkspaceHostDir:/mnt/local")
         add("--bind=$workspaceBind:/root/projects")
     }
 

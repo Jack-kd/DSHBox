@@ -286,6 +286,10 @@
     <string name="files_risk_title">风险提示</string>
     <string name="files_root_sandbox">沙盒文件</string>
     <string name="files_root_workspace">工作区</string>
+    <string name="files_root_local">本地工作区</string>
+    <string name="local_perm_title">需要本地文件访问权限</string>
+    <string name="local_perm_msg">本地工作区需要「所有文件访问」权限，授权后才能浏览手机存储。请在系统授权页开启。</string>
+    <string name="local_perm_action">去授权</string>
     <string name="files_save_done">已保存</string>
     <string name="files_save_failed">保存失败：%1$s</string>
     <string name="files_save_failed_generic">保存失败</string>
@@ -445,6 +449,9 @@
     <string name="settings_section_appearance">外观</string>
     <string name="settings_section_dsh">DSH</string>
     <string name="settings_section_permissions">权限</string>
+    <string name="settings_local_access">本地文件访问</string>
+    <string name="settings_local_access_granted">已授权</string>
+    <string name="settings_local_access_denied">未授权</string>
     <string name="settings_section_sandbox">沙盒</string>
     <string name="settings_section_feedback">用户反馈</string>
     <string name="settings_feedback_star">在 GitHub 上点个 Star 支持我们</string>

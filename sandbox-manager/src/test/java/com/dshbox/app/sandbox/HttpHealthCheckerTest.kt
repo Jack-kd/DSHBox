@@ -57,7 +57,7 @@ class HttpHealthCheckerTest {
         thread.start()
         try {
             val checker = HttpHealthChecker(
-                port = server.localPort,
+                portProvider = { server.localPort },
                 connectTimeoutMs = 1_000,
                 readTimeoutMs = 2_000,
             )
@@ -99,7 +99,7 @@ class HttpHealthCheckerTest {
     @Test
     fun `端口未监听视为不健康`() = runBlocking {
         val checker = HttpHealthChecker(
-            port = 1, // 无服务监听的端口
+            portProvider = { 1 }, // 无服务监听的端口
             connectTimeoutMs = 500,
             readTimeoutMs = 500,
         )

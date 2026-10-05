@@ -18,15 +18,17 @@ import java.net.URL
  */
 class HttpHealthChecker(
     private val host: String = Constants.DSH_DEFAULT_HOST,
-    private val port: Int = Constants.DSH_DEFAULT_PORT,
+    /** 动态端口提供者：DSH 启动时若默认端口被占用会自动换端口，健康检查须跟随。 */
+    private val portProvider: () -> Int = { Constants.DSH_DEFAULT_PORT },
     private val path: String = "/",
     private val connectTimeoutMs: Int = 2_000,
     private val readTimeoutMs: Int = 3_000,
 ) : SandboxHealthChecker {
 
     override suspend fun check(): SandboxHealth = withContext(Dispatchers.IO) {
+        val port = portProvider()
         val portOpen = isPortOpen(host, port, connectTimeoutMs)
-        val httpAlive = if (portOpen) httpProbe() else false
+        val httpAlive = if (portOpen) httpProbe(port) else false
         SandboxHealth(
             dshProcessRunning = portOpen,
             portOpen = portOpen,
@@ -44,7 +46,7 @@ class HttpHealthChecker(
             false
         }
 
-    private fun httpProbe(): Boolean =
+    private fun httpProbe(port: Int): Boolean =
         try {
             val connection = URL("http://$host:$port$path").openConnection() as HttpURLConnection
             connection.requestMethod = "GET"

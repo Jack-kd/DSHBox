@@ -120,6 +120,8 @@ fun MainScreen() {
     // DSH 启动 token：首页「浏览器」入口必须把它拼进 URL 才打得开——
     // 外部浏览器没有 WebView 的 cookie 交换与注入通道（用户实证：不带 token 会停在鉴权页）。
     var dshLaunchToken by remember { mutableStateOf<String?>(null) }
+    // DSH Web 服务实际地址：默认 3080，被占用时自动换端口，WebView/浏览器据此加载。
+    var dshBaseUrl by remember { mutableStateOf(com.dshbox.app.common.Constants.DSH_BASE_URL) }
     val bundledRuntimeAvailable = remember {
         BundledRuntimeInstaller(app, app.container.sandboxConfig).hasBundledBundle()
     }
@@ -192,6 +194,10 @@ fun MainScreen() {
 
     LaunchedEffect(sandboxManager) {
         sandboxManager.dshLaunchToken.collectLatest { dshLaunchToken = it }
+    }
+
+    LaunchedEffect(sandboxManager) {
+        sandboxManager.dshBaseUrl.collectLatest { dshBaseUrl = it }
     }
 
     // 无响应提示（展示层）：健康循环只在连续不应答达阈值时置位，任一成功即复位。
@@ -397,6 +403,7 @@ private fun TabContent(
             dshReady = dshReady,
             dshError = dshError,
             dshUnresponsive = dshUnresponsive,
+            dshBaseUrl = dshBaseUrl,
             runtimeInstalled = runtimeInstalled,
             nodeLayerInstalled = nodeLayerInstalled,
             bundledRuntimeAvailable = bundledRuntimeAvailable,
@@ -417,7 +424,7 @@ private fun TabContent(
                     val opened = runCatching {
                         context.startActivity(
                             dshBrowserChooser(
-                                Constants.DSH_BASE_URL,
+                                dshBaseUrl,
                                 token,
                                 context.getString(R.string.home_open),
                             ),
@@ -443,7 +450,7 @@ private fun TabContent(
                 .zIndex(if (selectedTab == 2) 1f else 0f)
                 .alpha(if (selectedTab == 2) 1f else 0f)
                 .then(if (selectedTab == 2) Modifier else Modifier.keepAliveHidden()),
-            url = com.dshbox.app.common.Constants.DSH_BASE_URL,
+            url = dshBaseUrl,
             dshState = dshState,
             sandboxRunning = sandboxRunning,
             isActiveTab = selectedTab == 2,

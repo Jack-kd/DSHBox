@@ -16,6 +16,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Environment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dshbox.app.R
@@ -33,6 +38,19 @@ import java.io.File
 
 // --- 共享设计 token（供 FilesScreen / FolderPickerScreen 等文件页组件复用） ---
 internal val PrimaryGreen = Color(0xFF10A37F)
+
+/**
+ * 本地工作区访问权限是否已授予。
+ * Android 11+（R）用「所有文件访问」（MANAGE_EXTERNAL_STORAGE，系统授权页）；
+ * Android 10 及以下回退 READ_EXTERNAL_STORAGE 运行时权限（分区存储公共目录可读）。
+ */
+internal fun Context.hasLocalWorkspaceAccess(): Boolean =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        Environment.isExternalStorageManager()
+    } else {
+        @Suppress("DEPRECATION")
+        checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+    }
 internal val DangerRed = Color(0xFFDC2626)
 
 /** 文件页是否处于深色：与应用主题开关（浅色/深色/跟随系统）联动。 */
