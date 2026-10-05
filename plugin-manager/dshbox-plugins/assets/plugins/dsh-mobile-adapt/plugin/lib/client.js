@@ -1543,7 +1543,11 @@ window.__ModuleLoader__.load({
             return null;
           }
           function pickPath(path, dlg) {
-            bootLog('ws-quick: pick ' + path);
+            bootLog('ws-quick: nav ' + path);
+            // 目标目录的「目录 part」：非根目录补尾斜杠。browse 的 draft 解析按
+            // 分隔符切分目录层——填 `/mnt/local` 只会落到 `/mnt/` 层（只见 local
+            // 文件夹）；填 `/mnt/local/` 才直接进入该目录层展示其内容。
+            var draft = (path === '/' || path.endsWith('/')) ? path : path + '/';
             var filled = false;
             var editBtn = findEditButton(dlg);
             if (editBtn) { try { editBtn.click(); } catch (e) { bootLog('ws-quick: edit-click-fail'); } }
@@ -1554,20 +1558,16 @@ window.__ModuleLoader__.load({
               if (input && !filled) {
                 try {
                   var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-                  setter.call(input, path);
+                  setter.call(input, draft);
                   input.dispatchEvent(new Event('input', { bubbles: true }));
                   input.dispatchEvent(new Event('change', { bubbles: true }));
-                } catch (e) { input.value = path; }
+                } catch (e) { input.value = draft; }
                 filled = true;
-                bootLog('ws-quick: value set');
+                bootLog('ws-quick: nav to ' + draft);
               }
-              var openBtn = findOpenButton(dlg);
-              if (filled && openBtn && !openBtn.disabled) {
-                clearInterval(timer);
-                try { openBtn.click(); bootLog('ws-quick: opened ' + path); } catch (e) { bootLog('ws-quick: open-click-fail'); }
-                return;
-              }
-              if (tries > 50) clearInterval(timer);
+              // 只导航不自动打开：draft-follow 会让 browse 显示目标目录内容，
+              // 由用户像平时一样浏览并选择自己的工作区（browse 回调 onPicked）。
+              if (tries > 20) clearInterval(timer);
             }, 150);
           }
 
