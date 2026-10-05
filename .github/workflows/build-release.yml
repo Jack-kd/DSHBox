@@ -91,23 +91,25 @@ jobs:
       - name: Fetch bundled DSH layer
         run: |
           set -euxo pipefail
-          mkdir -p "runtime/android-assets/dsh"
-          curl -fL --retry 3 -o "runtime/android-assets/dsh/${DSH_VERSION}.tar.zst" \
+          # 放进 AGP 标准 assets 目录（app/src/main/assets/），打包后即 assets/dsh/*，
+          # 与官方 APK 布局一致（assets.srcDirs 的外部目录在 CI 上不可靠）。
+          mkdir -p "app/src/main/assets/dsh"
+          curl -fL --retry 3 -o "app/src/main/assets/dsh/${DSH_VERSION}.tar.zst" \
             "https://github.com/${UPSTREAM_REPO}/releases/download/${DSHBOX_TAG}/${DSH_VERSION}.tar.zst"
-          (cd "runtime/android-assets/dsh" && sha256sum "${DSH_VERSION}.tar.zst" > "${DSH_VERSION}.tar.zst.sha256")
-          ls -la "runtime/android-assets/dsh/"
+          (cd "app/src/main/assets/dsh" && sha256sum "${DSH_VERSION}.tar.zst" > "${DSH_VERSION}.tar.zst.sha256")
+          ls -la "app/src/main/assets/dsh/"
 
       - name: Fetch android-side layer from runtime bundle
         run: |
           set -euxo pipefail
-          mkdir -p "runtime/android-assets/runtime"
+          mkdir -p "app/src/main/assets/runtime"
           curl -fL --retry 3 -o "/tmp/${RUNTIME_ZIP}" \
             "https://github.com/${UPSTREAM_REPO}/releases/download/${DSHBOX_TAG}/${RUNTIME_ZIP}"
           # 整包约 193 MB，只解出 APK 需要的 android-side 层与其 sha256 侧车
           unzip -o "/tmp/${RUNTIME_ZIP}" "android-side.tar.zst" "android-side.tar.zst.sha256" \
-            -d "runtime/android-assets/runtime/"
+            -d "app/src/main/assets/runtime/"
           rm -f "/tmp/${RUNTIME_ZIP}"
-          ls -la "runtime/android-assets/runtime/"
+          ls -la "app/src/main/assets/runtime/"
 
       # ---------- 签名 ----------
 
@@ -168,6 +170,22 @@ jobs:
           set -euxo pipefail
           APK="app/build/outputs/apk/release/app-release.apk"
           test -f "$APK" || { echo "::error::APK not found: $APK"; exit 1; }
+          # 防御：确认内嵌运行环境资产真的进了 APK（曾因 assets.srcDirs 外部目录
+          # 未打包导致 APK 缺失 DSH 层与 android-side 层，装机后无法在线获取环境）
+          python3 - <<'PYEOF'
+          import zipfile, sys
+          z = zipfile.ZipFile("app/build/outputs/apk/release/app-release.apk")
+          dsh = [n for n in z.namelist() if n.startswith("assets/dsh/") and n.endswith(".tar.zst")]
+          rt  = [n for n in z.namelist() if n.startswith("assets/runtime/") and n.endswith(".tar.zst")]
+          print("assets/dsh:", dsh)
+          print("assets/runtime:", rt)
+          if not dsh:
+              print("::error::APK 缺少内嵌 DSH 层 (assets/dsh/*.tar.zst)")
+              sys.exit(1)
+          if not rt:
+              print("::error::APK 缺少内嵌 android-side 层 (assets/runtime/*.tar.zst)")
+              sys.exit(1)
+          PYEOF
           VER=$(sed -n 's/.*versionName *= *"\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)
           cp "$APK" "dshbox-v${VER}-release.apk"
           echo "APK_NAME=dshbox-v${VER}-release.apk" >> "$GITHUB_ENV"
