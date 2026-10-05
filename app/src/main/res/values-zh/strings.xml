@@ -32,7 +32,7 @@
     <string name="action_restart">重启</string>
     <string name="action_start">启动</string>
     <string name="action_stop">关闭</string>
-    <string name="app_name">DSHBox</string>
+    <string name="app_name">DSHApp</string>
     <string name="archivebrowser_err_no_zstd_native">当前设备缺少 zstd 原生库（仅 arm64 真机支持 tar.zst），请使用外部应用打开</string>
     <string name="archivebrowser_err_open_failed">压缩包打开失败（文件可能损坏或格式不受支持）</string>
     <string name="archiveerr_default">压缩包无法解压</string>
@@ -461,12 +461,12 @@
     <string name="settings_storage_data">沙盒数据</string>
     <string name="settings_storage_refresh">点击刷新</string>
     <string name="settings_storage_scanning">统计中…</string>
-    <string name="settings_update_available_msg">发现新版本 %1$s（当前 v%2$s），可前往官网下载。</string>
+    <string name="settings_update_available_msg">发现新版本 %1$s（当前 v%2$s），可前往 GitHub Releases 下载。</string>
     <string name="settings_update_error_msg">检查更新失败，请检查网络后重试。</string>
     <string name="settings_update_import_failed">导入失败：%1$s</string>
     <string name="settings_update_imported">运行环境本体已替换，请重新启动沙箱</string>
     <string name="settings_update_latest_msg">当前已是最新版本 v%1$s。</string>
-    <string name="settings_update_open_site">前往官网下载</string>
+    <string name="settings_update_open_site">前往 GitHub Releases</string>
     <string name="settings_zip_no_dsh_layer">zip 内未找到 DSH 层包（*.tar.gz / *.tar.zst / *.tar / *.tgz）</string>
     <string name="stage_exporting">导出中</string>
     <string name="stage_importing">导入中</string>

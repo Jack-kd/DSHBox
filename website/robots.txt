@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://wsk-build.github.io/DSHBox/sitemap.xml

@@ -32,16 +32,14 @@ fun compareVersions(a: String, b: String): Int {
 
 /** App 自动更新检测：从 GitHub Releases 读取最新 tag 与本地版本比对。 */
 object AppUpdater {
-    /** 官网首页（含下载入口） */
-    const val SITE_URL = "https://wsk-build.github.io/DSHBox/"
 
     /** GitHub 仓库首页（右上角可点 Star）——设置页「用户反馈」用。 */
-    const val REPO_URL = "https://github.com/WSK-build/DSHBox"
+    const val REPO_URL = "https://github.com/Jack-kd/DSHBox"
 
     /** GitHub Issues 列表（提 Bug / 建议）——设置页「用户反馈」用。 */
     const val ISSUES_URL = "$REPO_URL/issues"
 
-    private const val API_URL = "https://api.github.com/repos/WSK-build/DSHBox/releases/latest"
+    private const val API_URL = "https://api.github.com/repos/Jack-kd/DSHBox/releases/latest"
     private const val CONNECT_TIMEOUT_MS = 8_000
     private const val READ_TIMEOUT_MS = 8_000
 
@@ -66,7 +64,7 @@ object AppUpdater {
                 conn.connectTimeout = CONNECT_TIMEOUT_MS
                 conn.readTimeout = READ_TIMEOUT_MS
                 // GitHub API 要求显式 UA，否则返回 403。
-                conn.setRequestProperty("User-Agent", "DSHBox/${currentVersion}")
+                conn.setRequestProperty("User-Agent", "DSHApp/${currentVersion}")
                 conn.setRequestProperty("Accept", "application/vnd.github+json")
                 val code = conn.responseCode
                 val ok = code in 200..299
@@ -81,10 +79,10 @@ object AppUpdater {
         }
     }
 
-    /** 打开系统浏览器到官网首页（下载入口所在）。 */
-    fun openSite(context: Context) {
+    /** 打开系统浏览器到本仓库 Releases 页（下载入口所在）。 */
+    fun openReleases(context: Context) {
         try {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SITE_URL)))
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("$REPO_URL/releases")))
         } catch (_: Exception) {
             // 设备上没有可用浏览器时静默失败。
         }
@@ -93,7 +91,7 @@ object AppUpdater {
     /**
      * 打开系统浏览器到任意 [url]（设置页「用户反馈」的两条入口用）。
      *
-     * 与 [openSite] 同一范式：无可用浏览器时**静默失败**——
+     * 与 [openReleases] 同一范式：无可用浏览器时**静默失败**——
      * 这只是"鼓励用户去支持项目"的引导路径，失败不该弹错误或崩溃。
      */
     fun openUrl(context: Context, url: String) {

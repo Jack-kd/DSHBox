@@ -38,7 +38,7 @@ android {
         applicationId = "com.dshbox.app"
         minSdk = 29
         targetSdk = 36
-        // 多语言版本：联合国六语 + 语言选择器 + 硬编码清零 + 布局恒 LTR + i18n 门禁。
+        // 双语文案：简体中文 + English + 语言选择器（跟随系统）。
         versionCode = 8
         versionName = "1.4.0"
 

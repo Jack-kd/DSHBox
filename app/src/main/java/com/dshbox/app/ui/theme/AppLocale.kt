@@ -8,25 +8,21 @@ import androidx.compose.runtime.setValue
 import androidx.core.os.LocaleListCompat
 
 /**
- * 应用语言枚举（联合国六语 + 跟随系统）。
+ * 应用语言枚举（简体中文 + English + 跟随系统）。
  *
  * [nativeName] 是各语言的「自称」，固定不随界面语言翻译——语言选择器里用户在
  * 陌生界面语言下也能认出自己的语言。SYSTEM 项的展示文案走字符串资源。
  */
 enum class AppLanguage(val tag: String?, val nativeName: String) {
     SYSTEM(null, ""),
-    AR("ar", "العربية"),
     EN("en", "English"),
-    ES("es", "Español"),
-    FR("fr", "Français"),
-    RU("ru", "Русский"),
     ZH("zh", "中文"),
     ;
 
     companion object {
         /**
-         * 按「主语言」匹配——BCP-47 可能带区域子标签（ar-EG、zh-Hans-CN）
-         * 或多标签（ar,en，取第一个），均归一为六语枚举；避免误回落 SYSTEM
+         * 按「主语言」匹配——BCP-47 可能带区域子标签（zh-Hans-CN）
+         * 或多标签（zh,en，取第一个），均归一为枚举；避免误回落 SYSTEM
          * 导致设置页单选高亮与实际生效语言错位。
          */
         fun forTag(tag: String?): AppLanguage {

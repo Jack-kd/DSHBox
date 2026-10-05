@@ -209,8 +209,8 @@
     <string name="pm_guard_toast_absolute">已开启绝对安全模式</string>
     <string name="pm_guard_toast_failed">DSH 未能启动，已停止重试</string>
 
-    <!-- DSHBox 专属适配插件（原设置页装配行迁移至此） -->
-    <string name="pm_adapt_section_title">DSHBox专属适配插件</string>
+    <!-- DSHApp 专属适配插件（原设置页装配行迁移至此） -->
+    <string name="pm_adapt_section_title">DSHApp专属适配插件</string>
     <string name="pm_adapt_mobile">DSH移动端页面适配</string>
     <string name="pm_adapt_mobile_pilot">DSH连接手机</string>
     <string name="pm_adapt_restart_hint">，重启 DSH 后生效</string>
@@ -233,7 +233,7 @@
     <string name="pm_market_source_foot">已安装的插件不受切换影响。</string>
     <string name="pm_market_source_mobile_desc">DeepSeek Harness 移动端插件合集，专为手机端使用场景打造。
 
-DSHBox 刚刚建立起来的收录仓库，便于扩展移动端场景的插件适配。欢迎大家向仓库提交 PR，分享自己的想法和创意！</string>
+DSHApp 刚刚建立起来的收录仓库，便于扩展移动端场景的插件适配。欢迎大家向仓库提交 PR，分享自己的想法和创意！</string>
     <string name="pm_market_source_official_desc">DeepSeek Harness 社区最大插件精选列表！但主要面向电脑端使用，部分插件在移动端会存在页面不适配和兼容性问题。</string>
     <string name="pm_market_source_open_failed">没有可以打开这个链接的应用</string>
 </resources>

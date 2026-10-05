@@ -209,8 +209,8 @@
     <string name="pm_guard_toast_absolute">Absolute safety mode is on</string>
     <string name="pm_guard_toast_failed">DSH did not start; automatic retry stopped</string>
 
-    <!-- DSHBox adapter plugins (moved from the settings page) -->
-    <string name="pm_adapt_section_title">DSHBox adapter plugins</string>
+    <!-- DSHApp adapter plugins (moved from the settings page) -->
+    <string name="pm_adapt_section_title">DSHApp adapter plugins</string>
     <string name="pm_adapt_mobile">DSH mobile page adaptation</string>
     <string name="pm_adapt_mobile_pilot">Connect phone to DSH</string>
     <string name="pm_adapt_restart_hint">; restart DSH to apply</string>
@@ -233,7 +233,7 @@
     <string name="pm_market_source_foot">Installed plugins are not affected.</string>
     <string name="pm_market_source_mobile_desc">A curated collection of DeepSeek Harness plugins built for phone-sized screens.
 
-The catalog newly created by DSHBox, to make extending mobile plugin coverage easier. Pull requests and ideas are welcome!</string>
+The catalog newly created by DSHApp, to make extending mobile plugin coverage easier. Pull requests and ideas are welcome!</string>
     <string name="pm_market_source_official_desc">The largest curated list of DeepSeek Harness plugins — but it targets desktop use, so some plugins have layout or compatibility problems on mobile.</string>
     <string name="pm_market_source_open_failed">No app can open this link</string>
 </resources>

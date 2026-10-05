@@ -456,7 +456,7 @@ fun SettingsScreen(
                 )
             }
 
-            // 语言选择器（联合国六语 + 跟随系统，默认跟随系统）。
+            // 语言选择器（简体中文 + English + 跟随系统，默认跟随系统）。
             // 用分隔线把「主题」按钮组与「语言」行切开，而不是只靠 16dp 留白——
             // 三个按钮与下面一行在竖向上都是等宽块，光靠留白会被读成同一组。
             // 按钮组自身没有行内边距，上下各补 10dp 才不会贴着线。
@@ -490,7 +490,7 @@ fun SettingsScreen(
         }
 
         SettingsSection(title = stringResource(R.string.settings_section_update)) {
-            // Row 1：检查更新 App —— 联网查询 GitHub Releases 最新 tag，有新版本则弹窗引导去官网下载。
+            // Row 1：检查更新 App —— 联网查询 GitHub Releases 最新 tag，有新版本则弹窗引导去 GitHub Releases 下载。
             SettingsActionRow(
                 title = stringResource(R.string.settings_check_update),
                 onClick = {
@@ -842,7 +842,7 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showUpdateCheckDialog = false
-                    AppUpdater.openSite(context)
+                    AppUpdater.openReleases(context)
                 }) {
                     Text(stringResource(R.string.settings_update_open_site))
                 }

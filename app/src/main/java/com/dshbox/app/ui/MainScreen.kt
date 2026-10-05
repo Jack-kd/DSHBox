@@ -323,7 +323,7 @@ fun MainScreen() {
                 confirmButton = {
                     TextButton(onClick = {
                         autoUpdate = null
-                        AppUpdater.openSite(dialogContext)
+                        AppUpdater.openReleases(dialogContext)
                     }) {
                         Text(stringResource(R.string.settings_update_open_site))
                     }

@@ -42,7 +42,7 @@
     <string name="action_restart">Restart</string>
     <string name="action_start">Start</string>
     <string name="action_stop">Stop</string>
-    <string name="app_name">DSHBox</string>
+    <string name="app_name">DSHApp</string>
     <string name="archivebrowser_err_no_zstd_native">This device lacks the zstd native library (tar.zst is supported on arm64 devices only); open with an external app instead</string>
     <string name="archivebrowser_err_open_failed">Failed to open the archive (the file may be corrupted or the format is unsupported)</string>
     <string name="archiveerr_default">The archive could not be extracted</string>
@@ -471,12 +471,12 @@
     <string name="settings_storage_data">Sandbox data</string>
     <string name="settings_storage_refresh">Tap to refresh</string>
     <string name="settings_storage_scanning">Calculating…</string>
-    <string name="settings_update_available_msg">New version %1$s is available (current: v%2$s). You can download it from the website.</string>
+    <string name="settings_update_available_msg">New version %1$s is available (current: v%2$s). You can download it from GitHub Releases.</string>
     <string name="settings_update_error_msg">Update check failed. Check your network and try again.</string>
     <string name="settings_update_import_failed">Import failed: %1$s</string>
     <string name="settings_update_imported">Runtime replaced. Restart the sandbox to apply.</string>
     <string name="settings_update_latest_msg">You are already on the latest version (v%1$s).</string>
-    <string name="settings_update_open_site">Open the download page</string>
+    <string name="settings_update_open_site">Open GitHub Releases</string>
     <string name="settings_zip_no_dsh_layer">No DSH layer package found in the zip (*.tar.gz / *.tar.zst / *.tar / *.tgz)</string>
     <string name="stage_exporting">Exporting</string>
     <string name="stage_importing">Importing</string>
