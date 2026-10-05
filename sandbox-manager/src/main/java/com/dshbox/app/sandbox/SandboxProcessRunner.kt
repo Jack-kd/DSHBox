@@ -117,6 +117,13 @@ class SandboxProcessRunner(
         pilotHostDir: String? = null,
         /** 本地工作区宿主目录（/storage/emulated/0），绑定到 guest /mnt/local。空则不绑。 */
         localWorkspaceHostDir: String? = null,
+        /**
+         * DSH Web 服务端口。DSH 0.2.0 的 webserver 端口来自启动命令
+         * `--port <N>`（`dsh --profile web --port <N>`，见 dsh-web-app/startup.js：
+         * `port: ctx.webStartup.port ?? 3080`），**不读环境变量 PORT**。
+         * 默认端口被外部进程占用时，调用方分配空闲端口后经此传入。
+         */
+        dshPort: Int = Constants.DSH_DEFAULT_PORT,
     ): List<String> = buildList {
         addAll(
             layeredProotPrefix(
@@ -149,7 +156,7 @@ class SandboxProcessRunner(
         add(
             "exec /usr/local/bin/node --expose-internals$shim " +
                 "/opt/dshapp/runtime/node_modules/@deepseek-ai/dsh/lib/bin.js " +
-                "--profile ${Constants.DSH_WEB_PROFILE}$patches",
+                "--profile ${Constants.DSH_WEB_PROFILE} --port $dshPort$patches",
         )
     }
 

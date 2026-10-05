@@ -284,6 +284,7 @@ class DefaultSandboxManager(
                         dshPatchGuestPaths = dshOverlayGuestPaths(),
                         pilotHostDir = pilotHostDir(),
                         localWorkspaceHostDir = localWorkspaceHostDir(),
+                        dshPort = dshPort,
                     )
                     val prootEnv = buildProotEnv(runtimeDir, "dsh")
                     Log.i(TAG, "starting dsh proot")
@@ -1389,6 +1390,7 @@ class DefaultSandboxManager(
                 dshPatchGuestPaths = dshOverlayGuestPaths(),
                 pilotHostDir = pilotHostDir(),
                 localWorkspaceHostDir = localWorkspaceHostDir(),
+                dshPort = dshPort,
             )
             val prootEnv = buildProotEnv(runtimeDir, "dsh")
             dshProcess = processRunner.start(command, tag = "dsh", env = prootEnv, onRawLine = ::ingestDshWebLaunchToken)
