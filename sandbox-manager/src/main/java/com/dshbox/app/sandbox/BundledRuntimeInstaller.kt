@@ -154,7 +154,9 @@ class BundledRuntimeInstaller(
     }
 
     private fun findLayerAsset(layer: String): String? = try {
-        context.assets.list(ASSETS_DIR)?.firstOrNull { it.startsWith("$layer.tar.") }
+        context.assets.list(ASSETS_DIR)?.firstOrNull {
+            it.startsWith("$layer.tar.") && !it.endsWith(".sha256")
+        }
     } catch (t: Throwable) {
         Log.w(TAG, "cannot find layer asset $layer: ${t.message}")
         null
