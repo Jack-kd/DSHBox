@@ -39,39 +39,14 @@ object DebianSources {
     }
 
     /**
-     * 探测与安装的源清单（24 源）。
-     * TUNA/BFSU 各节点均不可用，已移除。
+     * 探测与安装的源清单（4 源，二创精简版）。
+     * 仅保留 Debian 官方 + 腾讯云 / 华为云 / 中科大镜像。
      */
     val ALL: List<DebianArchiveSource> = listOf(
         DebianArchiveSource(
             name = UiText.Res(R.string.deb_source_official_name),
             url = "https://deb.debian.org/debian",
             note = UiText.Res(R.string.deb_source_official_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_jaist_name),
-            url = "https://ftp.jaist.ac.jp/pub/Linux/debian",
-            note = UiText.Res(R.string.deb_source_jaist_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_kernel_name),
-            url = "https://mirrors.kernel.org/debian",
-            note = UiText.Res(R.string.deb_source_kernel_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_waterloo_name),
-            url = "https://mirror.csclub.uwaterloo.ca/debian",
-            note = UiText.Res(R.string.deb_source_waterloo_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_ustc_name),
-            url = "https://mirrors.ustc.edu.cn/debian",
-            note = UiText.Res(R.string.deb_source_ustc_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_aliyun_name),
-            url = "https://mirrors.aliyun.com/debian",
-            note = UiText.Res(R.string.deb_source_aliyun_note),
         ),
         DebianArchiveSource(
             name = UiText.Res(R.string.deb_source_tencent_name),
@@ -84,84 +59,9 @@ object DebianSources {
             note = UiText.Res(R.string.deb_source_huawei_note),
         ),
         DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_archive_name),
-            url = "https://ftp.debian.org/debian",
-            note = UiText.Res(R.string.deb_source_archive_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_riken_name),
-            url = "https://ftp.riken.jp/Linux/debian/debian",
-            note = UiText.Res(R.string.deb_source_riken_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_fau_name),
-            url = "https://ftp.fau.de/debian",
-            note = UiText.Res(R.string.deb_source_fau_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_esslingen_name),
-            url = "https://ftp-stud.hs-esslingen.de/debian",
-            note = UiText.Res(R.string.deb_source_esslingen_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_rwth_name),
-            url = "https://ftp.halifax.rwth-aachen.de/debian",
-            note = UiText.Res(R.string.deb_source_rwth_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_leaseweb_name),
-            url = "https://mirror.leaseweb.com/debian",
-            note = UiText.Res(R.string.deb_source_leaseweb_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_mirrorservice_name),
-            url = "https://www.mirrorservice.org/sites/ftp.debian.org/debian",
-            note = UiText.Res(R.string.deb_source_mirrorservice_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_nchc_name),
-            url = "https://opensource.nchc.org.tw/debian",
-            note = UiText.Res(R.string.deb_source_nchc_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_ocf_name),
-            url = "https://mirrors.ocf.berkeley.edu/debian",
-            note = UiText.Res(R.string.deb_source_ocf_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_osuosl_name),
-            url = "https://debian.osuosl.org/debian",
-            note = UiText.Res(R.string.deb_source_osuosl_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_onecom_name),
-            url = "https://mirror.one.com/debian",
-            note = UiText.Res(R.string.deb_source_onecom_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_yandex_name),
-            url = "https://mirror.yandex.ru/debian",
-            note = UiText.Res(R.string.deb_source_yandex_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_aarnet_name),
-            url = "https://mirror.aarnet.edu.au/pub/debian",
-            note = UiText.Res(R.string.deb_source_aarnet_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_task_name),
-            url = "https://ftp.task.gda.pl/debian",
-            note = UiText.Res(R.string.deb_source_task_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_163_name),
-            url = "https://mirrors.163.com/debian",
-            note = UiText.Res(R.string.deb_source_163_note),
-        ),
-        DebianArchiveSource(
-            name = UiText.Res(R.string.deb_source_sjtug_name),
-            url = "https://mirrors.sjtug.sjtu.edu.cn/debian",
-            note = UiText.Res(R.string.deb_source_sjtug_note),
+            name = UiText.Res(R.string.deb_source_ustc_name),
+            url = "https://mirrors.ustc.edu.cn/debian",
+            note = UiText.Res(R.string.deb_source_ustc_note),
         ),
     )
 }
