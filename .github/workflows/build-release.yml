@@ -55,7 +55,9 @@ jobs:
       DSH_VERSION: 0.2.0-rc.2
       RUNTIME_ZIP: dshapp-runtime-debian-arm64-0.1.0.zip
       UPSTREAM_REPO: WSK-build/DSHBox
-      KS_DIR: /home/runner/.dshbox-ci
+      # 相对 GITHUB_WORKSPACE 的相对路径：避免工作流文件出现"家目录字面量"
+      # （隐私审计会拦截该形态的本机路径）。
+      KS_DIR: .dshbox-ci
 
     steps:
       - uses: actions/checkout@v4
@@ -128,7 +130,7 @@ jobs:
             # 仓库 Secrets 配置了正式密钥（base64 编码的 jks）
             echo "$KEYSTORE_BASE64" | base64 -d > "$KS_DIR/release.jks"
             {
-              echo "storeFile=$KS_DIR/release.jks"
+              echo "storeFile=$PWD/$KS_DIR/release.jks"
               echo "storePassword=$KEYSTORE_PASSWORD"
               echo "keyAlias=$KEYSTORE_ALIAS"
               echo "keyPassword=$KEYSTORE_PASSWORD"
@@ -144,7 +146,7 @@ jobs:
                 -dname "CN=DSHBox CI Dev, OU=Dev, O=DSHBox, L=Local, S=Local, C=CN"
             fi
             {
-              echo "storeFile=$KS_DIR/release.jks"
+              echo "storeFile=$PWD/$KS_DIR/release.jks"
               echo "storePassword=dshbox-ci-dev"
               echo "keyAlias=dshapp"
               echo "keyPassword=dshbox-ci-dev"
