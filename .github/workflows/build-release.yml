@@ -1,0 +1,181 @@
+name: Build Release APK
+
+# 用 GitHub Actions 直接编译出可安装的 release APK。
+#
+# 触发：
+#   - 手动（Actions 页 → Build Release APK → Run workflow），可勾选先跑单测
+#   - push 到 main 且改动涉及源码/构建配置时自动构建
+#
+# 产物：app/build/outputs/apk/release/app-release.apk，
+#   以 artifact `dshbox-release-apk` 形式上传（页面右上角 Artifacts 下载）。
+#
+# 内嵌运行环境资产说明（v1.4.0 起 APK 只内嵌 dsh 层与 android-side 层）：
+#   - assets/dsh/<DSH_VERSION>.tar.zst              —— DSH 层（来自上游 Release）
+#   - assets/runtime/android-side.tar.zst(.sha256)  —— 宿主侧 PRoot 层（来自运行环境整包）
+#   base/node 两层不进 APK（首次使用时由应用「在线获取运行环境」安装）。
+#
+# 签名：优先用仓库 Secrets 里的正式密钥；未配置时自动生成一个开发密钥并
+#   缓存到仓库级 Actions 缓存（key 固定 → 后续构建签名一致，可直接覆盖安装）。
+#   要上架/长期使用请配置 Secrets：KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEYSTORE_ALIAS。
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_tests:
+        description: 构建前先跑全量 JVM 单测（较慢，约 +4 分钟）
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'common/**'
+      - 'bridge/**'
+      - 'sandbox-manager/**'
+      - 'terminal-*/**'
+      - 'plugin-manager/**'
+      - 'pilot/**'
+      - 'libs/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
+      - '.github/workflows/build-release.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      # 上游发布 tag 与内嵌 DSH 层版本 —— 换版本时同步改这两行
+      DSHBOX_TAG: v1.4.0
+      DSH_VERSION: 0.2.0-rc.2
+      RUNTIME_ZIP: dshapp-runtime-debian-arm64-0.1.0.zip
+      UPSTREAM_REPO: WSK-build/DSHBox
+      KS_DIR: /home/runner/.dshbox-ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # setup-android@v3 的 packages 默认值是 `tools platform-tools`，而 `tools`
+      # 早已从 SDK 仓库移除（新版 runner 上 sdkmanager tools 直接失败），
+      # 这里只装仍存在的 platform-tools，其余 SDK 包由下一步手动安装。
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+
+      - name: Accept licenses & install SDK packages
+        run: |
+          sdkmanager --update >/dev/null 2>&1 || true
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Grant execute permission to scripts
+        run: chmod +x gradlew tools/*.sh runtime-bundle/scripts/*.sh runtime-bundle/build_rootfs.sh
+
+      # ---------- 内嵌运行环境资产（APK 打包必需） ----------
+
+      - name: Fetch bundled DSH layer
+        run: |
+          set -euxo pipefail
+          mkdir -p "runtime/android-assets/dsh"
+          curl -fL --retry 3 -o "runtime/android-assets/dsh/${DSH_VERSION}.tar.zst" \
+            "https://github.com/${UPSTREAM_REPO}/releases/download/${DSHBOX_TAG}/${DSH_VERSION}.tar.zst"
+          (cd "runtime/android-assets/dsh" && sha256sum "${DSH_VERSION}.tar.zst" > "${DSH_VERSION}.tar.zst.sha256")
+          ls -la "runtime/android-assets/dsh/"
+
+      - name: Fetch android-side layer from runtime bundle
+        run: |
+          set -euxo pipefail
+          mkdir -p "runtime/android-assets/runtime"
+          curl -fL --retry 3 -o "/tmp/${RUNTIME_ZIP}" \
+            "https://github.com/${UPSTREAM_REPO}/releases/download/${DSHBOX_TAG}/${RUNTIME_ZIP}"
+          # 整包约 193 MB，只解出 APK 需要的 android-side 层与其 sha256 侧车
+          unzip -o "/tmp/${RUNTIME_ZIP}" "android-side.tar.zst" "android-side.tar.zst.sha256" \
+            -d "runtime/android-assets/runtime/"
+          rm -f "/tmp/${RUNTIME_ZIP}"
+          ls -la "runtime/android-assets/runtime/"
+
+      # ---------- 签名 ----------
+
+      - name: Restore cached dev keystore
+        uses: actions/cache@v4
+        id: ks-cache
+        with:
+          path: ${{ env.KS_DIR }}
+          key: dshbox-keystore-${{ github.repository }}
+
+      - name: Prepare signing config
+        run: |
+          set -euxo pipefail
+          mkdir -p "$KS_DIR"
+          if [ -n "${KEYSTORE_BASE64:-}" ]; then
+            # 仓库 Secrets 配置了正式密钥（base64 编码的 jks）
+            echo "$KEYSTORE_BASE64" | base64 -d > "$KS_DIR/release.jks"
+            {
+              echo "storeFile=$KS_DIR/release.jks"
+              echo "storePassword=$KEYSTORE_PASSWORD"
+              echo "keyAlias=$KEYSTORE_ALIAS"
+              echo "keyPassword=$KEYSTORE_PASSWORD"
+            } > keystore.properties
+          else
+            # 开发密钥：缓存命中则复用（保证多次构建签名一致），否则现场生成
+            if [ ! -f "$KS_DIR/release.jks" ]; then
+              keytool -genkeypair -v \
+                -keystore "$KS_DIR/release.jks" \
+                -alias dshapp \
+                -keyalg RSA -keysize 2048 -validity 10000 \
+                -storepass dshbox-ci-dev -keypass dshbox-ci-dev \
+                -dname "CN=DSHBox CI Dev, OU=Dev, O=DSHBox, L=Local, S=Local, C=CN"
+            fi
+            {
+              echo "storeFile=$KS_DIR/release.jks"
+              echo "storePassword=dshbox-ci-dev"
+              echo "keyAlias=dshapp"
+              echo "keyPassword=dshbox-ci-dev"
+            } > keystore.properties
+          fi
+          sed 's/\(Password=\).*/\1***/' keystore.properties
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+
+      # ---------- 构建 ----------
+
+      - name: Run unit tests (optional)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_tests }}
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Assemble release APK
+        run: ./gradlew :app:assembleRelease --stacktrace
+
+      - name: Verify & rename APK
+        run: |
+          set -euxo pipefail
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK" || { echo "::error::APK not found: $APK"; exit 1; }
+          VER=$(sed -n 's/.*versionName *= *"\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)
+          cp "$APK" "dshbox-v${VER}-release.apk"
+          echo "APK_NAME=dshbox-v${VER}-release.apk" >> "$GITHUB_ENV"
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: dshbox-release-apk
+          path: ${{ env.APK_NAME }}
+          if-no-files-found: error
+          retention-days: 30
