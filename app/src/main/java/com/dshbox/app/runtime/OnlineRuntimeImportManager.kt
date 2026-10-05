@@ -766,7 +766,12 @@ class OnlineRuntimeImportManager(
         }
         return@withContext runCatching {
             val names = appContext.assets.list("runtime") ?: return@runCatching false
-            val asset = names.firstOrNull { it.startsWith("android-side.tar.") } ?: return@runCatching false
+            // ⚠️ 必须排除 .sha256 侧车：assets 列表顺序不保证，若 firstOrNull 先命中
+            // `android-side.tar.zst.sha256`（100 字节文本）会被当层归档解压而失败
+            // （OnlineRuntimeImportManager.ONLINE_ASIDE "cannot prepare android-side layer"）。
+            val asset = names.firstOrNull {
+                it.startsWith("android-side.tar.") && !it.endsWith(".sha256")
+            } ?: return@runCatching false
             val tmp = File(staging, "_aside.tar")
             appContext.assets.open("runtime/$asset").use { input ->
                 tmp.outputStream().use { output -> input.copyTo(output) }
