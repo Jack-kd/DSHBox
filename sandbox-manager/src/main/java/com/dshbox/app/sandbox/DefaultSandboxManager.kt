@@ -40,7 +40,8 @@ import java.util.zip.ZipFile
  */
 class DefaultSandboxManager(
     private val config: SandboxConfig,
-    private val healthChecker: SandboxHealthChecker = HttpHealthChecker(config.dshHost, portProvider = { dshPort }),
+    /** 测试可注入的替代健康检查器；null 时用默认实现（跟随动态端口）。 */
+    private val healthCheckerOverride: SandboxHealthChecker? = null,
     /**
      * 设备是否处于交互状态（唤醒且亮屏）。健康循环据此区分探测失败的性质：设备休眠
      * 时 guest 会被整体冻结，此时的失败是暂时状态，不该判为故障。
@@ -77,9 +78,14 @@ class DefaultSandboxManager(
     /**
      * 当前 DSH Web 服务端口。默认 [Constants.DSH_DEFAULT_PORT]，启动时若被占用
      * （外部进程或残留）自动顺延找下一个空闲端口；停止 DSH 后复位回默认值。
+     * 声明在 [healthChecker] 之前：后者通过它跟随动态端口。
      */
     @Volatile
     private var dshPort: Int = Constants.DSH_DEFAULT_PORT
+
+    /** 健康检查器（动态端口跟随 [dshPort]）；测试可经 [healthCheckerOverride] 注入。 */
+    private val healthChecker: SandboxHealthChecker =
+        healthCheckerOverride ?: HttpHealthChecker(config.dshHost, portProvider = { dshPort })
 
     /** 当前 DSH Web 服务地址（跟随 [dshPort]）。UI/通知/诊断以此为准，勿用静态常量。 */
     private val _dshBaseUrl = MutableStateFlow(Constants.DSH_BASE_URL)

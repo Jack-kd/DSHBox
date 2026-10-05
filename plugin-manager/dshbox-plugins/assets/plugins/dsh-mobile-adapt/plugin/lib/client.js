@@ -1455,6 +1455,63 @@ window.__ModuleLoader__.load({
         }, true);
       })(); } catch (e) { bootLog('open-doc-fail:' + (e && e.message || e)); }
 
+      // =====================================================================
+      // 14) 工作区快捷三选一（沙盒文件 / 工作区 / 本地工作区）
+      // =====================================================================
+      // DSH WebUI 新建会话页的「选择工作区」目录选择器（slot
+      //   sidebar.workspaces.directoryFlow / conversation.hero.workspace.directoryFlow）
+      // 默认是完整目录树浏览（dsh-client-ui-directory-picker-browse）。
+      // 这里额外注册一个三选项快捷实现，与目录树浏览并存：
+      //   沙盒文件    → /               （guest 根文件系统）
+      //   工作区      → /root/projects  （DSHBox 工作区，user-data）
+      //   本地工作区  → /mnt/local      （宿主 /storage/emulated/0 挂载点）
+      // 选中后调用 owner 注入的 onPicked(path)，由宿主创建/切换工作区并启动会话。
+      try {
+        (function installQuickWorkspacePicker() {
+          var react;
+          try { react = require('react'); } catch (e) { bootLog('ws-picker:no-react:' + (e && e.message || e)); return; }
+          var WORKSPACE_QUICK = [
+            { key: 'sandbox', label: '沙盒文件', labelEn: 'Sandbox', path: '/' },
+            { key: 'work', label: '工作区', labelEn: 'Workspace', path: '/root/projects' },
+            { key: 'local', label: '本地工作区', labelEn: 'Local workspace', path: '/mnt/local' },
+          ];
+          var panelStyle = {
+            display: 'flex', flexDirection: 'column', gap: '8px', padding: '8px 12px',
+            borderBottom: '1px solid rgba(127,127,127,.2)',
+          };
+          var btnStyle = {
+            display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+            padding: '10px 12px', border: 'none', borderRadius: '8px',
+            background: 'rgba(16,163,127,.10)', color: 'inherit', fontSize: '14px',
+            cursor: 'pointer', textAlign: 'left',
+          };
+          function QuickWorkspaceFlow(props) {
+            if (!props || !props.open) return null;
+            var docLang = (document.documentElement && document.documentElement.lang) || '';
+            var buttons = WORKSPACE_QUICK.map(function (opt) {
+              var label = (docLang && docLang.indexOf('zh') === 0) ? opt.label : opt.labelEn;
+              return react.createElement('button', {
+                key: opt.key,
+                type: 'button',
+                style: btnStyle,
+                'data-dshbox-ws': opt.key,
+                onClick: function () { if (props.onPicked) props.onPicked(opt.path); },
+              }, label);
+            });
+            return react.createElement('div', { style: panelStyle, 'data-dshbox-ws-picker': '1' }, buttons);
+          }
+          var HOLES = ['sidebar.workspaces.directoryFlow', 'conversation.hero.workspace.directoryFlow'];
+          HOLES.forEach(function (hole) {
+            try {
+              ctx.slots.inject(hole, function* () {
+                yield ctx.slots.register({ name: hole, inject: [] }, QuickWorkspaceFlow);
+              });
+              bootLog('ws-picker:hole:' + hole);
+            } catch (e) { bootLog('ws-picker:hole-fail:' + hole); }
+          });
+        })();
+      } catch (e) { bootLog('workspace-picker-fail:' + (e && e.message || e)); }
+
     };
 
     return module.exports;
